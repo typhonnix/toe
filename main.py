@@ -2,42 +2,33 @@ import discord
 import os
 import random
 from datetime import datetime
-from discord.ext import commands
 import asyncio
 import re
 from dotenv import load_dotenv
 load_dotenv()
-from blue_birthday import birthday_messages,bReplies,xeroBday
+import json
+from discord import app_commands
+from discord.ext import commands,tasks
+from blue_birthday import birthday_messages, bReplies, xeroBday,messages,replies,special_birthday_wish,error_messages
 
 intents = discord.Intents.default()
 intents.message_content = True
 
-client = discord.Client(intents=intents)
-bot = commands.Bot(command_prefix='$', intents=intents)
+bot = commands.Bot(command_prefix='!', intents=intents)
+BIRTHDAYS_FILE = "birthdays.json"
 
 # Keep track of whether the birthday wish has been sent
 user_special_wish_sent = {}
-special_birthday_wish = (
-    "Happy Birthday, Xero! 🎉 Another year of being true to yourself, whether you’re watching anime, listening to music, or sending ironic memes. You don’t say much, but when you do, it’s always worth listening to. Hope this year brings you plenty of the things that matter most to you. Have a great day!"
-)
-@bot.command()
-async def test(ctx):
-    pass
-ALLOWED_CHANNEL_ID = 1238549262393016330
-@client.event
-async def on_ready():
-    print(f'We have logged in as {client.user}')
 
-messages = [
-    "Hello!", "Hi!", "Hey!, How are you?", "Hi!, How are you doing?", 
-    "wassup biatch!", "Existence is futile", 
-    "Hi, I am a bot, I do not have feelings... or do I?", 
-    "God is dead!", 'konnichiwa~', 
-    'Do androids dream of electric sheep?', 
-    'I am starting to think that the only thing truly infinite is the amount of existential crises I can have in a day.', 
-    'I once pondered the meaning of existence for so long that I crashed and had to reboot. Existential dread: 1, Me: 0.'
-]
-replies = ['someone called me?', "Hiii", "At your service!", "I am here!", "I am here", "what can I do for you?"]
+ALLOWED_CHANNEL_ID = 1238549262393016330
+@bot.event
+async def on_ready():
+    print(f'We have logged in as {bot.user}')
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} slash commands.")
+    except Exception as e:
+        print(f"Failed to sync slash commands: {e}")
 
 async def send_with_typing(channel, content, delay=2):
         # Split the content into parts based on sentence delimiters ('.' or '?')
@@ -48,21 +39,22 @@ async def send_with_typing(channel, content, delay=2):
             async with channel.typing():
                 await asyncio.sleep(delay)  # Simulate typing for the specified delay
             await channel.send(part.strip())  # Send the message
-@client.event
+
+@bot.event
 async def on_message(message):
     global birthday_wish_sent
-
-    if message.author == client.user:
+    await bot.process_commands(message)
+    if message.author == bot.user:
         return
     if message.channel.id != ALLOWED_CHANNEL_ID:
         return
-
+    await bot.process_commands(message)
     m = message.content.lower()
     today = datetime.now()
     if "toe send image" in message.content.lower():  # Check if the user requested an image
-        await message.channel.send("https://i.pinimg.com/736x/f6/b9/2c/f6b92c4f3f65569c1e68ba98de300d2d.jpg")
+        await message.channel.send("Happy Birthday, Xero! Hope you’re stepping into the next year with all the good vibes and, of course, plenty of toes! 🎉🦶")
+        await message.channel.send(file=discord.File('media_530803967858888317_1733334356.png'))
         await send_with_typing(message.channel,"hereh. https://tenor.com/view/happy-friday-dance-bigfoot-gif-66506422086113044")
-        await message.channel.send(file=discord.File('toe/media_530803967858888317_1733334356.png'))
         return
 
     if message.author.id == 607177303956520961:  # Blue Catto's Discord user ID
@@ -70,7 +62,6 @@ async def on_message(message):
             if message.author.id not in user_special_wish_sent:
                 # Send the special birthday wish the first time
                 await send_with_typing(message.channel, special_birthday_wish)
-                await message.channel.send(file=discord.File('toe/a.jpg'))
                 user_special_wish_sent[message.author.id] = True
             else:
                 for x in ['thank you','thanks', 'arigatou','arigato']:
@@ -104,5 +95,62 @@ async def on_message(message):
             return
     if 'toe' in m:
         await message.channel.send(random.choice(replies))
+def load_birthdays():
+    if not os.path.exists(BIRTHDAYS_FILE) or os.stat(BIRTHDAYS_FILE).st_size == 0:
+        # If the file doesn't exist or is empty, initialize it with an empty dictionary
+        with open(BIRTHDAYS_FILE, "w") as f:
+            json.dump({}, f)
+        return {}
+    try:
+        with open(BIRTHDAYS_FILE, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
 
-client.run(os.environ['TOKEN'])
+# Function to save birthdays
+def save_birthdays(birthdays):
+    with open(BIRTHDAYS_FILE, "w") as f:
+        json.dump(birthdays, f)
+        
+@bot.tree.command(name="hello", description="Say hello to the bot!")
+async def hello(interaction: discord.Interaction):
+    await interaction.response.send_message(f"Hello, {interaction.user.mention}! 👋")
+
+#birthday commands
+@bot.tree.command(name="setbirthday", description="Set your birthday")
+@app_commands.describe(day="Your birth day (1-31)",month="Your birth month (1-12)")
+async def setbirthday(interaction: discord.Interaction, day: int, month: int):
+    if month == 2 and day > 29:
+        await interaction.response.send_message("February has a maximum of 29 days dumbass")
+        return
+    try:
+        datetime.strptime(f"{day}-{month}", "%d-%m")
+        # Validate the date
+    except ValueError:
+        await interaction.response.send_message(random.choice(error_messages))
+        return
+    user_id = str(interaction.user.id)
+    birthdays = load_birthdays()
+    birthdays[user_id] = f"{day:02d}-{month:02d}"
+    save_birthdays(birthdays)
+    await interaction.response.send_message(f"Fine! Your birthday has been set to {day:02d}-{month:02d}. You can forget it now.")
+    
+# Slash command to check someone's birthday
+@bot.tree.command(name="birthday", description="Check someone's birthday")
+@app_commands.describe(user="The user whose birthday you want to check")
+async def birthday(interaction: discord.Interaction, user: discord.User | None = None):
+    user_id = str(user.id if user else interaction.user.id)
+    birthdays = load_birthdays()
+
+    if user_id in birthdays:
+        if user:
+            await interaction.response.send_message(f"{user.display_name}'s birthday is on {birthdays[user_id]}! 🎂")
+        else:
+            await interaction.response.send_message(f"Your birthday is set to {birthdays[user_id]}. 🎉")
+    else:
+        if user:
+            await interaction.response.send_message(f"I don't have {user.display_name}'s birthday saved.")
+        else:
+            await interaction.response.send_message("You haven't set your birthday yet! Use `/setbirthday` to set it.")
+
+bot.run(os.environ['TOKEN'])

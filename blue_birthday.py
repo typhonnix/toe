@@ -1,4 +1,27 @@
 # birthday_wishes.py
+error_messages = [
+    "Try again. 🙄",
+    "Nice try. But you'll need to stick to the basics: months between 1 and 12, days between 1 and 31",
+    "Invalid date? Really? Let’s try that again with a valid month (1-12) and day (1-31), shall we? 😑",
+    "You had one job...one",
+    "That's not how dates work...",
+    "This is kindergarten stuff man"
+]
+
+special_birthday_wish = (
+    "Happy Birthday, Xero! 🎉 Another year of being true to yourself, whether you’re watching anime, listening to music, or sending ironic memes. You don’t say much, but when you do, it’s always worth listening to. Hope this year brings you plenty of the things that matter most to you. Have a great day!"
+)
+messages = [
+    "Hello!", "Hi!", "Hey!, How are you?", "Hi!, How are you doing?", 
+    "wassup biatch!", "Existence is futile", 
+    "Hi, I am a bot, I do not have feelings... or do I?", 
+    "God is dead!", 'konnichiwa~', 
+    'Do androids dream of electric sheep?', 
+    'I am starting to think that the only thing truly infinite is the amount of existential crises I can have in a day.', 
+    'I once pondered the meaning of existence for so long that I crashed and had to reboot. Existential dread: 1, Me: 0.',
+    "It's depressing being stuck here"
+]
+replies = ['someone called me?', "Hiii", "At your service!", "I am here!", "I am here", "what can I do for you?"]
 xeroBday = [
     "Happy birthday Xero! May your next year be filled with lots of toes on your feet",
     "From toe to toe, we're all sending you birthday cheer! May your day be filled with joy, laughter, and lots of foot-friendly fun!",
@@ -8,10 +31,7 @@ xeroBday = [
     "Hope you’re stepping into the next year with all the good vibes and, of course, plenty of toes! Happy Birthday, Xero!  🎉🦶",
     "Another year closer to the grave, huh? Congratulations, I guess. It’s not like time has any intrinsic meaning anyway—just a human construct to remind us of our mortality.",
     "Wishing the man of few words a year of big moments! May your birthday be more epic than Frieren’s adventures.",
-    "https://tenor.com/view/happy-birthday-minon-youre-one-in-a-minion-cake-celebrate-gif-16939546",
-    "https://tenor.com/view/kids-birthday-kid%27s-birthday-childrens-birthday-child%27s-birthday-childs-birthday-gif-10329312987031527795",
-    "https://tenor.com/view/happy-birthday-to-you-minions-singing-gif-15506821",
-    "https://i.pinimg.com/736x/f6/b9/2c/f6b92c4f3f65569c1e68ba98de300d2d.jpg"
+    
     
 ]
 birthday_messages = [
