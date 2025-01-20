@@ -1,26 +1,64 @@
-import discord
+import asyncio
+import json
 import os
 import random
-from datetime import datetime
-import asyncio
 import re
-from dotenv import load_dotenv
-load_dotenv()
-import json
+from datetime import datetime
 from discord import app_commands
-from discord.ext import commands,tasks
-from blue_birthday import birthday_messages, bReplies, xeroBday,messages,replies,special_birthday_wish,error_messages
+from discord.ext import commands, tasks
+from blue_birthday import birthday_messages, bReplies, xeroBday, messages, replies, special_birthday_wish, error_messages
+from tictactoe import TicTacToeGame, TicTacToeView
+import discord
+from uttt import UltimateTicTacToe,MiniBoardView
+from dotenv import load_dotenv
 
+load_dotenv()
 intents = discord.Intents.default()
 intents.message_content = True
 
+# client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix='!', intents=intents)
 BIRTHDAYS_FILE = "birthdays.json"
+        
+@bot.command()
+async def tictactoe(ctx, opponent: discord.Member):
+    if opponent.bot:
+        await ctx.send("You can't play against a bot!")
+        return
+
+    game = TicTacToeGame(ctx.author, opponent)
+    view = TicTacToeView(game)
+    await ctx.send(f"Tic Tac Toe game started between {ctx.author.mention} and {opponent.mention}!", view=view)
+
+@bot.command()
+async def utt(ctx,opponent:discord.Member):
+    if opponent.bot:
+        await ctx.send("You can't play against a bot!")
+        return
+    game = UltimateTicTacToe(ctx.author,opponent)
+    view = MiniBoardView(game)
+    await ctx.send(content="Game started! Choose a board to play on:", file=discord.File("board.png"), view=view)
+def load_birthdays():
+    if not os.path.exists(BIRTHDAYS_FILE) or os.stat(BIRTHDAYS_FILE).st_size == 0:
+        # If the file doesn't exist or is empty, initialize it with an empty dictionary
+        with open(BIRTHDAYS_FILE, "w") as f:
+            json.dump({}, f)
+        return {}
+    try:
+        with open(BIRTHDAYS_FILE, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+# Function to save birthdays
+def save_birthdays(birthdays):
+    with open(BIRTHDAYS_FILE, "w") as f:
+        json.dump(birthdays, f)
 
 # Keep track of whether the birthday wish has been sent
 user_special_wish_sent = {}
 
-ALLOWED_CHANNEL_ID = 1238549262393016330
+ALLOWED_CHANNEL_ID = 1285525471353765952
 @bot.event
 async def on_ready():
     print(f'We have logged in as {bot.user}')
@@ -39,23 +77,17 @@ async def send_with_typing(channel, content, delay=2):
             async with channel.typing():
                 await asyncio.sleep(delay)  # Simulate typing for the specified delay
             await channel.send(part.strip())  # Send the message
-
 @bot.event
 async def on_message(message):
     global birthday_wish_sent
-    await bot.process_commands(message)
     if message.author == bot.user:
         return
-    if message.channel.id != ALLOWED_CHANNEL_ID:
-        return
     await bot.process_commands(message)
+    # if message.channel.id != ALLOWED_CHANNEL_ID:
+    #     return
+    # await bot.process_commands(message)
     m = message.content.lower()
     today = datetime.now()
-    if "toe send image" in message.content.lower():  # Check if the user requested an image
-        await message.channel.send("Happy Birthday, Xero! Hope you’re stepping into the next year with all the good vibes and, of course, plenty of toes! 🎉🦶")
-        await message.channel.send(file=discord.File('media_530803967858888317_1733334356.png'))
-        await send_with_typing(message.channel,"hereh. https://tenor.com/view/happy-friday-dance-bigfoot-gif-66506422086113044")
-        return
 
     if message.author.id == 607177303956520961:  # Blue Catto's Discord user ID
         if message.created_at.month == 12 and message.created_at.day == 20:  # Check if today is her birthday
@@ -95,23 +127,7 @@ async def on_message(message):
             return
     if 'toe' in m:
         await message.channel.send(random.choice(replies))
-def load_birthdays():
-    if not os.path.exists(BIRTHDAYS_FILE) or os.stat(BIRTHDAYS_FILE).st_size == 0:
-        # If the file doesn't exist or is empty, initialize it with an empty dictionary
-        with open(BIRTHDAYS_FILE, "w") as f:
-            json.dump({}, f)
-        return {}
-    try:
-        with open(BIRTHDAYS_FILE, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
 
-# Function to save birthdays
-def save_birthdays(birthdays):
-    with open(BIRTHDAYS_FILE, "w") as f:
-        json.dump(birthdays, f)
-        
 @bot.tree.command(name="hello", description="Say hello to the bot!")
 async def hello(interaction: discord.Interaction):
     await interaction.response.send_message(f"Hello, {interaction.user.mention}! 👋")
@@ -135,6 +151,7 @@ async def setbirthday(interaction: discord.Interaction, day: int, month: int):
     save_birthdays(birthdays)
     await interaction.response.send_message(f"Fine! Your birthday has been set to {day:02d}-{month:02d}. You can forget it now.")
     
+
 # Slash command to check someone's birthday
 @bot.tree.command(name="birthday", description="Check someone's birthday")
 @app_commands.describe(user="The user whose birthday you want to check")
@@ -144,13 +161,30 @@ async def birthday(interaction: discord.Interaction, user: discord.User | None =
 
     if user_id in birthdays:
         if user:
-            await interaction.response.send_message(f"{user.display_name}'s birthday is on {birthdays[user_id]}! 🎂")
+            print(user)
+            await interaction.response.send_message(f"{user.name}'s birthday is on {birthdays[user_id]}! 🎂")
         else:
             await interaction.response.send_message(f"Your birthday is set to {birthdays[user_id]}. 🎉")
     else:
         if user:
-            await interaction.response.send_message(f"I don't have {user.display_name}'s birthday saved.")
+            await interaction.response.send_message(f"I don't have {user.name}'s birthday saved.")
         else:
             await interaction.response.send_message("You haven't set your birthday yet! Use `/setbirthday` to set it.")
+
+@bot.tree.command(name="uttt",description="Play Ultimate Tic Tac Toe")
+@app_commands.describe(opponent="Who you wanna play with?")
+async def uttt(interaction: discord.Interaction, opponent: discord.Member):
+    if opponent.bot:
+        await interaction.response.send_message("You can't play against a bot!", ephemeral=True)
+        return
+
+    game = UltimateTicTacToe(interaction.user, opponent)
+    view = MiniBoardView(game)
+
+    await interaction.response.send_message(
+        content="Game started! Choose a board to play on:",
+        file=discord.File("board.png"),
+        view=view
+    )
 
 bot.run(os.environ['TOKEN'])
