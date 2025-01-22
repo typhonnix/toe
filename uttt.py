@@ -112,7 +112,6 @@ class UltimateTicTacToeImage:
         self.board = [[" " for _ in range(9)] for _ in range(9)]  # Empty board
         self.base_image=self.initialize_board()
         self.image = self.base_image.copy()
-        # self.mini_boards = [" " for _ in range(9)]
     
     def initialize_board(self):
         self.base_image = Image.new("RGB", (self.board_size, self.board_size), "black")
@@ -136,7 +135,6 @@ class UltimateTicTacToeImage:
         return self.base_image
     def update_symbol(self, row, col, symbol):
     # Copy the base image
-        # self.image = self.base_image.copy()
         draw = ImageDraw.Draw(self.base_image)
     
         # font = ImageFont.load_default(size=self.cell_size//2)
@@ -232,7 +230,6 @@ class UltimateTicTacToe:
         self.player1 = player1
         self.player2 = player2
         self.current_player = player1
-        # self.current_player = 'X'
         self.next_board = None  # Determines which board the player must play on
         self.board = UltimateTicTacToeImage()
         self.board.save_board(filename="board.png", active_board_idx=self.next_board)
