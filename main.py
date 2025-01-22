@@ -1,39 +1,27 @@
 import discord
 import os
 import random
-import json
 from datetime import datetime
-from discord import app_commands
-from discord.ext import commands,tasks
 import asyncio
 import re
-from blue_birthday import birthday_messages, bReplies, xeroBday,messages,replies,special_birthday_wish
+import json
+from discord import app_commands
+from discord.ext import commands,tasks
+from blue_birthday import birthday_messages, bReplies, xeroBday,messages,replies,special_birthday_wish,error_messages
+from tictactoe import TicTacToeGame, TicTacToeView
+from uttt import UltimateTicTacToe,MiniBoardView
+from dotenv import load_dotenv
+load_dotenv()
 intents = discord.Intents.default()
 intents.message_content = True
 
-# client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix='!', intents=intents)
 BIRTHDAYS_FILE = "birthdays.json"
-
-def load_birthdays():
-    try:
-        with open(BIRTHDAYS_FILE, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-
-# Function to save birthdays
-def save_birthdays(birthdays):
-    with open(BIRTHDAYS_FILE, "w") as f:
-        json.dump(birthdays, f)
 
 # Keep track of whether the birthday wish has been sent
 user_special_wish_sent = {}
 
-@bot.command()
-async def test(ctx):
-    pass
-ALLOWED_CHANNEL_ID = 1285525471353765952
+ALLOWED_CHANNEL_IDS = [1238549262393016330,1285525471353765952,1245455560690761732,1261049236938817596]
 @bot.event
 async def on_ready():
     print(f'We have logged in as {bot.user}')
@@ -52,15 +40,16 @@ async def send_with_typing(channel, content, delay=2):
             async with channel.typing():
                 await asyncio.sleep(delay)  # Simulate typing for the specified delay
             await channel.send(part.strip())  # Send the message
+
 @bot.event
 async def on_message(message):
     global birthday_wish_sent
     await bot.process_commands(message)
     if message.author == bot.user:
         return
-    # if message.channel.id != ALLOWED_CHANNEL_ID:
-    #     return
-    # await bot.process_commands(message)
+    if message.channel.id not in  ALLOWED_CHANNEL_IDS:
+        return
+    await bot.process_commands(message)
     m = message.content.lower()
     today = datetime.now()
     if "toe send image" in message.content.lower():  # Check if the user requested an image
@@ -107,60 +96,88 @@ async def on_message(message):
             return
     if 'toe' in m:
         await message.channel.send(random.choice(replies))
+def load_birthdays():
+    if not os.path.exists(BIRTHDAYS_FILE) or os.stat(BIRTHDAYS_FILE).st_size == 0:
+        # If the file doesn't exist or is empty, initialize it with an empty dictionary
+        with open(BIRTHDAYS_FILE, "w") as f:
+            json.dump({}, f)
+        return {}
+    try:
+        with open(BIRTHDAYS_FILE, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
 
+# Function to save birthdays
+def save_birthdays(birthdays):
+    with open(BIRTHDAYS_FILE, "w") as f:
+        json.dump(birthdays, f)
+        
 @bot.tree.command(name="hello", description="Say hello to the bot!")
 async def hello(interaction: discord.Interaction):
     await interaction.response.send_message(f"Hello, {interaction.user.mention}! 👋")
 
-# Example of a slash command with arguments
-@bot.tree.command(name="add", description="Add two numbers")
-@app_commands.describe(a="The first number", b="The second number")
-async def add(interaction: discord.Interaction, a: int, b: int):
-    result = a + b
-    await interaction.response.send_message(f"The sum of {a} and {b} is {result}.")
-
-@bot.command()
-async def setbirthday(ctx, date: str):
-    """Set your birthday (format: MM-DD)"""
+#birthday commands
+@bot.tree.command(name="setbirthday", description="Set your birthday")
+@app_commands.describe(day="Your birth day (1-31)",month="Your birth month (1-12)")
+async def setbirthday(interaction: discord.Interaction, day: int, month: int):
+    if month == 2 and day > 29:
+        await interaction.response.send_message("February has a maximum of 29 days dumbass")
+        return
     try:
-        datetime.strptime(date, "%m-%d")  # Validate the date format
-        user_id = str(ctx.author.id)
-        birthdays = load_birthdays()
-        birthdays[user_id] = date
-        save_birthdays(birthdays)
-        await ctx.send(f"Got it! Your birthday has been set to {date}. 🎉")
+        datetime.strptime(f"{day}-{month}", "%d-%m")
+        # Validate the date
     except ValueError:
-        await ctx.send("Invalid date format! Please use MM-DD.")
-
-# Command to check someone's birthday
-@bot.command()
-async def birthday(ctx, user: discord.User = None):
-    """Check someone's birthday"""
-    user_id = str(user.id if user else ctx.author.id)
+        await interaction.response.send_message(random.choice(error_messages))
+        return
+    user_id = str(interaction.user.id)
+    birthdays = load_birthdays()
+    birthdays[user_id] = f"{day:02d}-{month:02d}"
+    save_birthdays(birthdays)
+    await interaction.response.send_message(f"Fine! Your birthday has been set to {day:02d}-{month:02d}. You can forget it now.")
+    
+# Slash command to check someone's birthday
+@bot.tree.command(name="birthday", description="Check someone's birthday")
+@app_commands.describe(user="The user whose birthday you want to check")
+async def birthday(interaction: discord.Interaction, user: discord.User | None = None):
+    user_id = str(user.id if user else interaction.user.id)
     birthdays = load_birthdays()
 
     if user_id in birthdays:
         if user:
-            await ctx.send(f"{user.name}'s birthday is on {birthdays[user_id]}! 🎂")
+            await interaction.response.send_message(f"{user.display_name}'s birthday is on {birthdays[user_id]}! 🎂")
         else:
-            await ctx.send(f"Your birthday is set to {birthdays[user_id]}. 🎉")
+            await interaction.response.send_message(f"Your birthday is set to {birthdays[user_id]}. 🎉")
     else:
         if user:
-            await ctx.send(f"Sorry, I don't have {user.name}'s birthday saved.")
+            await interaction.response.send_message(f"I don't have {user.display_name}'s birthday saved.")
         else:
-            await ctx.send("You haven't set your birthday yet! Use `!setbirthday MM-DD` to set it.")
+            await interaction.response.send_message("You haven't set your birthday yet! Use `/setbirthday` to set it.")
+#tic tac toe
+@bot.command()
+async def tictactoe(ctx, opponent: discord.Member):
+    if opponent.bot:
+        await ctx.send("You can't play against a bot!")
+        return
 
-# Periodic birthday check to announce today's birthdays
-@tasks.loop(hours=24)
-async def daily_birthday_check():
-    birthdays = load_birthdays()
-    today = datetime.now().strftime("%m-%d")
-    channel = bot.get_channel(1247280155228115074)  # Replace with the channel ID for announcements
+    game = TicTacToeGame(ctx.author, opponent)
+    view = TicTacToeView(game)
+    await ctx.send(f"Tic Tac Toe game started between {ctx.author.mention} and {opponent.mention}!", view=view)
+@bot.tree.command(name="uttt",description="Play Ultimate Tic Tac Toe")
+@app_commands.describe(opponent="Who you wanna play with?")
+async def uttt(interaction: discord.Interaction, opponent: discord.Member):
+    if opponent.bot:
+        await interaction.response.send_message("You can't play against a bot!", ephemeral=True)
+        return
+    if opponent == interaction.user:
+        await interaction.response.send_message("You can't play against yourself!", ephemeral=True)
+        return
+    game = UltimateTicTacToe(interaction.user, opponent)
+    view = MiniBoardView(game)
 
-    for user_id, date in birthdays.items():
-        if date == today:
-            await channel.send(f"🎂 Happy Birthday, <@{user_id}>! 🎉 Have an amazing day!")
-
-
-
+    await interaction.response.send_message(
+        content="Game started! Choose a board to play on:",
+        file=discord.File("board.png"),
+        view=view
+    )
 bot.run(os.environ['TOKEN'])

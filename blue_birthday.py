@@ -1,4 +1,13 @@
 # birthday_wishes.py
+error_messages = [
+    "Try again. 🙄",
+    "Nice try. But you'll need to stick to the basics: months between 1 and 12, days between 1 and 31",
+    "Invalid date? Really? Let’s try that again with a valid month (1-12) and day (1-31), shall we? 😑",
+    "You had one job...one",
+    "That's not how dates work...",
+    "This is kindergarten stuff man"
+]
+
 special_birthday_wish = (
     "Happy Birthday, Xero! 🎉 Another year of being true to yourself, whether you’re watching anime, listening to music, or sending ironic memes. You don’t say much, but when you do, it’s always worth listening to. Hope this year brings you plenty of the things that matter most to you. Have a great day!"
 )
@@ -9,7 +18,8 @@ messages = [
     "God is dead!", 'konnichiwa~', 
     'Do androids dream of electric sheep?', 
     'I am starting to think that the only thing truly infinite is the amount of existential crises I can have in a day.', 
-    'I once pondered the meaning of existence for so long that I crashed and had to reboot. Existential dread: 1, Me: 0.'
+    'I once pondered the meaning of existence for so long that I crashed and had to reboot. Existential dread: 1, Me: 0.',
+    "It's depressing being stuck here"
 ]
 replies = ['someone called me?', "Hiii", "At your service!", "I am here!", "I am here", "what can I do for you?"]
 xeroBday = [
